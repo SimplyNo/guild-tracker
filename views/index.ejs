@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+
+<head>
+    <%- include('./partials/head'); %>
+</head>
+
+<body>
+    <h1>
+        Hypixel Guilds Tracker v0.0.1
+    </h1>
+    <div id="chart"></div>
+    <script>
+        const options = {
+            series: JSON.parse(`<%-JSON.stringify(series)%>`),
+            chart: {
+                height: 350,
+                width: '100%',
+                type: 'line',
+                zoom: {
+                    enabled: false
+                },
+                animations: {
+                    enabled: false,
+                    easing: 'easeinout',
+                    speed: 800,
+                    animateGradually: {
+                        enabled: true,
+                        delay: 150
+                    },
+                    dynamicAnimation: {
+                        enabled: true,
+                        speed: 350
+                    },
+                }
+
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'straight'
+            },
+            title: {
+                text: 'Guilds',
+                align: 'left'
+            },
+            grid: {
+                row: {
+                    colors: ['#f3f3f3', 'transparent'],
+                    opacity: 0.5
+                },
+            },
+            xaxis: {
+                type: 'datetime',
+            },
+            yaxis: {
+                labels: {
+                    formatter: (val) => {
+                        return guildLevel(val).level
+                    }
+                },
+                range: 0
+            }
+        };
+
+        var chart = new ApexCharts(document.querySelector("#chart"), options);
+        chart.render();
+
+        function guildLevel(exp) {
+            const EXP_NEEDED = [
+                100000,
+                150000,
+                250000,
+                500000,
+                750000,
+                1000000,
+                1250000,
+                1500000,
+                2000000,
+                2500000,
+                2500000,
+                2500000,
+                2500000,
+                2500000,
+                3000000
+            ];
+            var level = 0;
+
+            for (let i = 0; i <= 1000; i += 1) {
+                var need = 0;
+
+                if (i >= EXP_NEEDED.length) need = EXP_NEEDED[EXP_NEEDED.length - 1];
+                else need = EXP_NEEDED[i];
+
+                if (exp - need < 0)
+                    return {
+                        level: Math.round((level + exp / need) * 100) / 100,
+                        nextLevel: Math.round(need - exp)
+                    };
+
+                level += 1;
+                exp -= need;
+            }
+
+            return { level: 1000, nextLevel: 0 };
+        };
+
+        function scaledGEXP(input) {
+            if (input <= 200000) return Number(input);
+            if (input <= 700000) return Number(Math.round(((input - 200000) / 10) + 200000));
+            if (input > 700000) return Number(Math.round(((input - 700000) / 33) + 250000));
+        }
+    </script>
+</body>
+
+</html>

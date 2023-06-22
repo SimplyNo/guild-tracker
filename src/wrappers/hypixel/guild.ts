@@ -2,31 +2,33 @@
 import fetch from "node-fetch";
 import { hypixelKeys as KEYS } from "../../../config.json";
 import { Util } from "../../util/Util";
-import { redis } from "../../index";
+import { APIUpdater, redis } from "../../index";
 import { getLevel } from "../functions/general";
+import mojang from "../mojang/mojangPlayer";
+import sk1er from "../sk1er/sk1erGuild";
+import { HypixelGuildResponse } from "../../schemas/Guild";
 const endpoints = {
     player: "&player=",
     id: "&id=",
     name: "&name="
 }
 const main = (endpoint: keyof typeof endpoints) => `http://api.hypixel.net/guild?key=${KEYS[Math.floor(Math.random() * (KEYS.length))]}${endpoints[endpoint]}`;
-import mojang from "../mojang/mojangPlayer";
-import sk1er from "../sk1er/sk1erGuild";
 
 const cacheLifespan = 60;
 let lastTimeReset = 30;
-
-export default async function get(query: string, type: 'player' | 'id' | 'name', parseNames?: boolean) {
-
-    return new Promise<any>(async res => {
+export default async function get<parseNames extends Boolean>(query: string, type: 'player' | 'id' | 'name', options?: { parseNames?: parseNames, cache?: boolean, updateAPI?: boolean }): Promise<HypixelGuildResponse<parseNames>> {
+    return new Promise(async (res, rej) => {
+        options = Object.assign({ parseNames: false, cache: true, updateAPI: true }, options || {});
+        const { parseNames, cache, updateAPI } = options;
         if (type == 'player' && 16 >= query.length) {
             let mojangp = await mojang(query);
-            if (!mojangp) return res({ exists: false })
+            if (!mojangp) return rej({ error: 'notfound', message: 'Player could not be found.' })
             query = mojangp.id;
         }
 
         // handle caching
-        const isCached = await redis.exists(`cache-guild:${query}`);
+
+        const isCached = cache ? await redis.exists(`cache-guild:${query}`) : false;
         if (isCached) {
             // console.log(new Error())
             // get teh api cache that is an object:
@@ -34,12 +36,14 @@ export default async function get(query: string, type: 'player' | 'id' | 'name',
 
             console.log(`[CACHE] ${query} was cached! Using cache: ${cache.name}`)
             // console.log(`cache:`, cache.get(query).displayname)
-            return res(cache);
+
+            return res({ cached: true, ...cache });
         }
 
         let data: any = { throttle: true };
         while (data?.throttle) {
-            let unparsed = await fetch(main(type) + encodeURI(query));
+            let unparsed = await fetch(main(type) + encodeURI(query)).catch(e => null);
+            if (!unparsed) return rej({ error: 'fetcherror', message: 'Error whilst fetching API' })
             data = await unparsed?.json().catch(e => ({ outage: true }));
             if (data?.throttle) {
                 const nextReset = parseInt(unparsed.headers.get('retry-after') as string) || (lastTimeReset ?? 30);
@@ -48,62 +52,65 @@ export default async function get(query: string, type: 'player' | 'id' | 'name',
             }
         }
 
-        if (data.outage) return res({ outage: true })
-
-        if (data.guild) {
-            let members = data.guild.members;
-            let sk1erData;
-            if (parseNames) {
-                sk1erData = await sk1er(data.guild.name);
-                if (sk1erData.exists == false) sk1erData = { members: [] }
-            }
-            for (const [index, member] of members.entries()) {
-                if (parseNames) {
-                    let sk1erName = sk1erData.members.find(m => m.uuid == member.uuid);
-                    if (!sk1erName || !sk1erName.name) {
-                        // Get mojang name
-                        let username = await mojang(member.uuid);
-                        if (!username) username = [{ name: "???" }];
-                        data.guild.members[index].username = username.name;
-                    } else {
-                        data.guild.members[index].username = sk1erName.name;
-                    }
-                }
-
-                // set member vars:
-                let weekly = Object.entries(member.expHistory).reduce((prev, current) => prev + parseInt(current[1] as string), 0);
-                data.guild.members[index].weekly = weekly;
-
-
-                // fill rnkas
-                if (data.guild && data.guild.ranks) {
-                    let ranks = Array.from(new Set(data.guild.members.map(el => el.rank)));
-                    let missing = ranks.filter((el) => !data.guild.ranks.find(e => e.name == el));
-                    if (missing.includes(data.guild.members[index].rank) && !["Guild Master", "GUILDMASTER"].includes(data.guild.members[index].rank)) {
-                        let defaultRank = data.guild.ranks.find(e => e.default);
-                        data.guild.members[index].rank = defaultRank?.name;
-                    }
-                }
-            }
-            // misc
-            const scaledExpHistory = data.guild.members.map((value, index) => Object.values(value.expHistory)).reduce((prev, curr) => curr.map((v, i) => prev[i] += v), [0, 0, 0, 0, 0, 0, 0]).map((e) => scaledGEXP(e))
-            data.guild.scaledExpHistory = scaledExpHistory.reduce((prev, curr, index) => Object.assign({ [Object.keys(data.guild.members[0].expHistory)[index]]: curr }, prev), {})
-
-            const expHistory = data.guild.members.map((value, index) => Object.values(value.expHistory)).reduce((prev, curr) => curr.map((v, i) => prev[i] += v), [0, 0, 0, 0, 0, 0, 0])
-            data.guild.expHistory = expHistory.reduce((prev, curr, index) => Object.assign({ [Object.keys(data.guild.members[0].expHistory)[index]]: curr }, prev), {})
-
-            // color
-            data.guild.tagColor && (data.guild.tagColor = colorMap[data.guild.tagColor]);
-
-            // level
-            let level = guildLevel(data.guild.exp);
-            data.guild.level = level.level;
-            data.guild.expToNextLevel = level.nextLevel;
+        if (data.outage) return rej({ error: 'outage', message: 'Hypixel Outage' })
+        if (!data.guild) return rej({ error: 'notfound', message: 'Could not find this guild' })
+        // do api updating
+        if (updateAPI) {
+            APIUpdater.updateGuild(data.guild);
         }
 
-        if (!isCached) redis.setex(`cache-guild:${query}`, cacheLifespan, JSON.stringify(data.guild));
 
-        res(data.guild || { exists: false })
+        let members = data.guild.members;
+        let sk1erData;
+        if (parseNames) {
+            sk1erData = await sk1er(data.guild.name);
+            if (sk1erData.exists == false) sk1erData = { members: [] }
+        }
+        for (const [index, member] of members.entries()) {
+            if (parseNames) {
+                let sk1erName = sk1erData.members.find(m => m.uuid == member.uuid);
+                if (!sk1erName || !sk1erName.name) {
+                    // Get mojang name
+                    let username = await mojang(member.uuid);
+                    if (!username) username = [{ name: "???" }];
+                    data.guild.members[index].username = username.name;
+                } else {
+                    data.guild.members[index].username = sk1erName.name;
+                }
+            }
+
+            // set member vars:
+            let weekly = Object.entries(member.expHistory).reduce((prev, current) => prev + parseInt(current[1] as string), 0);
+            data.guild.members[index].weekly = weekly;
+
+
+            // fill rnkas
+            if (data.guild && data.guild.ranks) {
+                let ranks = Array.from(new Set(data.guild.members.map(el => el.rank)));
+                let missing = ranks.filter((el) => !data.guild.ranks.find(e => e.name == el));
+                if (missing.includes(data.guild.members[index].rank) && !["Guild Master", "GUILDMASTER"].includes(data.guild.members[index].rank)) {
+                    let defaultRank = data.guild.ranks.find(e => e.default);
+                    data.guild.members[index].rank = defaultRank?.name;
+                }
+            }
+        }
+        // misc
+        const scaledExpHistory = data.guild.members.map((value, index) => Object.values(value.expHistory)).reduce((prev, curr) => curr.map((v, i) => prev[i] += v), [0, 0, 0, 0, 0, 0, 0]).map((e) => scaledGEXP(e))
+        data.guild.scaledExpHistory = scaledExpHistory.reduce((prev, curr, index) => Object.assign({ [Object.keys(data.guild.members[0].expHistory)[index]]: curr }, prev), {})
+
+        const expHistory = data.guild.members.map((value, index) => Object.values(value.expHistory)).reduce((prev, curr) => curr.map((v, i) => prev[i] += v), [0, 0, 0, 0, 0, 0, 0])
+        data.guild.expHistory = expHistory.reduce((prev, curr, index) => Object.assign({ [Object.keys(data.guild.members[0].expHistory)[index]]: curr }, prev), {})
+
+        // color
+        data.guild.tagColor && (data.guild.tagColor = colorMap[data.guild.tagColor]);
+
+        // level
+        let level = guildLevel(data.guild.exp);
+        data.guild.level = level.level;
+        data.guild.expToNextLevel = level.nextLevel;
+
+        data.guild ? res({ cached: false, ...data.guild }) : rej({ error: 'error', message: 'Something went wrong!' })
+        if (!isCached) redis.setex(`cache-guild:${query}`, cacheLifespan, JSON.stringify(data.guild));
     })
 }
 
@@ -172,7 +179,7 @@ const colorMap = {
     DARK_PURPLE: { code: '§5', hex: '#AA00AA', color: 'DARK_PURPLE' },
     DARK_RED: { code: '§4', hex: '#AA0000', color: 'DARK_RED' },
     DARK_AQUA: { code: '§3', hex: '#00AAAA', color: 'DARK_AQUA' },
-    DARK_GREEN: { code: '§2', hex: '#00AA00', color: 'DARK_GREEN' },
+    DARK_GREEN: { code: '§2', hex: '#00AA00', color: 'DARK_G    REEN' },
     DARK_BLUE: { code: '§1', hex: '#0000AA', color: 'DARK_BLUE' },
     BLACK: { code: '§0', hex: '#000000', color: 'BLACK' }
 };
