@@ -57,7 +57,7 @@ export const TrackedGuildSchema = new Schema({
     coins: { type: Number, required: true, default: 0 },
     coinsEver: { type: Number, required: true, default: 0 },
     created: { type: Number, required: true },
-    exp: { type: Number, required: true },
+    exp: { type: Number, default: 0, index: -1 },
     expHistory: {
         type: [SchemaTypes.Mixed],
         validate: {
@@ -75,9 +75,9 @@ export const TrackedGuildSchema = new Schema({
     allMembers: [{
         _id: false,
         inGuild: { type: Boolean, required: true },
-        left_estimate: { type: Date },
+        leftEstimate: { estimateMax: { type: Date }, estimateMin: { type: Date } },
         uuid: { type: String, required: true },
-        rank: { type: String, required: true },
+        rank: { type: String },
         joined: { type: Date, required: true },
         questParticipation: { type: Number },
         expHistory: { type: Map, of: Number, required: true },
@@ -92,9 +92,9 @@ export const TrackedGuildSchema = new Schema({
     }],
     preferredGames: { type: [String] },
     achievements: {
-        EXPERIENCE_KINGS: { type: Number, required: true },
-        WINNERS: { type: Number, required: true },
-        ONLINE_PLAYERS: { type: Number, required: true },
+        EXPERIENCE_KINGS: { type: Number },
+        WINNERS: { type: Number },
+        ONLINE_PLAYERS: { type: Number },
     },
     tagColor: { type: String },
     tag: { type: String },

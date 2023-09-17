@@ -8,7 +8,7 @@ const mojang = `https://api.mojang.com/users/profiles/minecraft/`;
 import { getRank, getPlusColor, getEmojiRank, getFormattedRank, getPlusColorMC, getSk1erRank, getEmojiRankFromFormatted, getLevel } from '../functions/general';
 import { redis } from "../../index";
 
-const cacheLifespan = 60;
+const cacheLifespan = 90;
 let lastTimeReset = 30;
 
 
