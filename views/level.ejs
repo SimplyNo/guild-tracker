@@ -69,12 +69,11 @@
                 },
                 labels: {
                     formatter: (val) => {
-                        return val.toLocaleString()
+                        return guildLevel(val).level
                     }
-                    // formatter: (val) => {
-                    //     return guildLevel(val).level
-                    // }
-                }
+                },
+                range: 0
+
             }
         };
 

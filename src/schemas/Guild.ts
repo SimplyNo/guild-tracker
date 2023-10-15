@@ -52,8 +52,8 @@ export type HypixelGuildResponse<parseNames extends Boolean> = (WrappedGuildData
 
 export const TrackedGuildSchema = new Schema({
     lastUpdated: { type: Date, required: true, default: () => new Date(), index: -1 },
-    name: { type: String, required: true, default: "a_hypixel_guild" },
-    name_lower: { type: String, required: true, lowercase: true },
+    name: { type: String, default: "an-unnamed-guild" },
+    name_lower: { type: String, default: "an-unnamed-guild", lowercase: true },
     coins: { type: Number, required: true, default: 0 },
     coinsEver: { type: Number, required: true, default: 0 },
     created: { type: Number, required: true },

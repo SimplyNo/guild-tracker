@@ -6,14 +6,15 @@ import chalk from "chalk";
 import { Wrappers } from "../wrappers/Wrappers";
 import { ObjectId } from "mongodb";
 export class GuildTracker extends EventEmitter {
-    public readonly updateIntervalSeconds = 2;
+    public readonly updateIntervalSeconds = 1;
     public readonly minCacheAge = 10 * 60 * 1000;
     public currentlyUpdating = false;
+    public currentUpdateGroup = 0;
     // the update order will be 0, 1, 2, etc so that the top 100 guilds are updated more often
     // 0: 1-100
     // 1: 100-10000
     // 2: everyone else
-    public currentUpdateGroup = 0;
+    public readonly updateScheme = [0, 2, 2, 2, 1, 2, 2, 2, 1]
     public updateIntervalID: NodeJS.Timeout | null = null;
     constructor(public APIModel: Model<TrackedGuild>) {
         super()
@@ -27,31 +28,40 @@ export class GuildTracker extends EventEmitter {
     }
     public async updateNextGuild() {
         this.currentlyUpdating = true;
-        const nextGuild = await this.getNextGuild().catch(e => null);
+        const nextGuild = await this.getNextGuild();
         // console.log('Updating a guild...', nextGuild)
         if (nextGuild && (nextGuild.lastUpdated.getTime() + this.minCacheAge) < Date.now()) {
-            const hypixelData = await Wrappers.hypixel.guild(nextGuild._id.toString(), 'id', { updateAPI: false }).catch(e => null);
+            const hypixelData = await Wrappers.hypixel.guild(nextGuild._id.toString(), 'id', { updateAPI: false }).catch(e => {
+                return e.error === 'notfound' ? ({ notfound: true }) : null
+            });
             if (hypixelData) {
-                await this.updateGuild(hypixelData);
+                if ((hypixelData as { notfound: true }).notfound) {
+                    console.warn(`Guild ${nextGuild.name} not found! Deleting...`)
+                    await this.APIModel.deleteOne({ _id: nextGuild._id });
+                } else {
+                    await this.updateGuild(hypixelData as HypixelGuildResponse<false>);
+                }
             }
         }
         this.currentlyUpdating = false;
     }
     private async getNextGuild() {
         // might be best to compile a leaderboard first so that it doesn't have to sort every time?
-        let allGuilds = await this.APIModel.find({}, {}, { sort: { 'exp': -1 } }).select({ lastUpdated: 1 }).lean();
+        let allGuilds = await this.APIModel.find({}, {}, { sort: { 'exp': -1 } }).select({ lastUpdated: 1, name: 1 }).lean();
 
-        this.currentUpdateGroup = this.currentUpdateGroup === 2 ? 0 : this.currentUpdateGroup + 1;
-        if (this.currentUpdateGroup === 0) {
+        this.currentUpdateGroup = this.currentUpdateGroup === (this.updateScheme.length - 1) ? 0 : this.currentUpdateGroup + 1;
+        const nextGroup = this.updateScheme[this.currentUpdateGroup];
+        if (nextGroup === 0) {
             // the last updated guild of top 100 guilds by gexp
             return allGuilds.slice(0, 100).sort((a, b) => a.lastUpdated.getTime() - b.lastUpdated.getTime())[0];
-        } else if (this.currentUpdateGroup === 1) {
+        } else if (nextGroup === 1) {
             // the last updated guild of top 10000 guilds by gexp
             return allGuilds.slice(100, 10000).sort((a, b) => a.lastUpdated.getTime() - b.lastUpdated.getTime())[0];
         } else {
             // the last updated guild of all guilds
             return allGuilds.slice(10000).sort((a, b) => a.lastUpdated.getTime() - b.lastUpdated.getTime())[0];
         }
+
         // return this.APIModel.findOne({}, {}, { sort: { 'lastUpdated': 1 } })
     }
     public async updateGuild(hypixelData: HypixelGuildResponse<false | true>) {
@@ -65,7 +75,7 @@ export class GuildTracker extends EventEmitter {
          * 5. Save guild in DB
         */
         const trackedGuild = await this.APIModel.findOne({ _id: hypixelData._id });
-        console.log(chalk.red('Updating guild: ') + chalk.hex(hypixelData.tagColor?.hex || '#808080').visible(`${hypixelData.name} [${hypixelData.tag}]`));
+        console.log(chalk.red(`(${this.updateScheme[this.currentUpdateGroup]}) Updating guild: `) + chalk.hex(hypixelData.tagColor?.hex || '#808080').visible(`${hypixelData.name} [${hypixelData.tag}]`) + chalk.grey(` Last Updated: ${Util.getDateString(Math.abs(Date.now() - (trackedGuild?.lastUpdated.getTime() || 0)))}`));
         if (!trackedGuild) {
             // add Guild
             console.log(`Not Tracked!`)
