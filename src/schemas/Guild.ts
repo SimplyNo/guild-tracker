@@ -49,11 +49,21 @@ interface WrappedGuildData<parseNames> extends Omit<APIGuildData, 'tagColor'> {
     tagColor?: { code: string, hex: string, color: string }
 }
 export type HypixelGuildResponse<parseNames extends Boolean> = (WrappedGuildData<parseNames>);
-
+const memberSchema = {
+    inGuild: { type: Boolean, required: true },
+    leftEstimate: { estimateMax: { type: Date }, estimateMin: { type: Date } },
+    uuid: { type: String, required: true },
+    rank: { type: String },
+    joined: { type: Date, required: true },
+    questParticipation: { type: Number },
+    expHistory: { type: Map, of: Number, required: true },
+};
+export const TrackedMemberSchema = new Schema(memberSchema, { _id: false })
 export const TrackedGuildSchema = new Schema({
+    firstUpdated: { type: Date, required: true, default: () => new Date() },
     lastUpdated: { type: Date, required: true, default: () => new Date(), index: -1 },
     name: { type: String, default: "an-unnamed-guild" },
-    name_lower: { type: String, default: "an-unnamed-guild", lowercase: true },
+    name_lower: { type: String, default: "an-unnamed-guild", lowercase: true, index: -1 },
     coins: { type: Number, required: true, default: 0 },
     coinsEver: { type: Number, required: true, default: 0 },
     created: { type: Number, required: true },
@@ -72,16 +82,7 @@ export const TrackedGuildSchema = new Schema({
     /**
      * All guild members including those who have left!
      */
-    allMembers: [{
-        _id: false,
-        inGuild: { type: Boolean, required: true },
-        leftEstimate: { estimateMax: { type: Date }, estimateMin: { type: Date } },
-        uuid: { type: String, required: true },
-        rank: { type: String },
-        joined: { type: Date, required: true },
-        questParticipation: { type: Number },
-        expHistory: { type: Map, of: Number, required: true },
-    }],
+    allMembers: [{ ...memberSchema, _id: false }],
     ranks: [{
         _id: false,
         name: { type: String, required: true },
@@ -103,4 +104,5 @@ export const TrackedGuildSchema = new Schema({
     publiclyListed: { type: Boolean },
     guildExpByGameType: { type: Map, of: Number, required: true },
 });
+export type TrackedMember<parseNames extends boolean = false> = parseNames extends true ? InferSchemaType<typeof TrackedMemberSchema> & { username?: string } : InferSchemaType<typeof TrackedMemberSchema>;
 export type TrackedGuild = InferSchemaType<typeof TrackedGuildSchema>;

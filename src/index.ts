@@ -4,7 +4,7 @@ import Redis from "ioredis";
 export const redis = new Redis();
 import { Wrappers } from "./wrappers/Wrappers";
 import mongoose, { model, mongo } from "mongoose";
-import { TrackedGuildSchema } from "./schemas/Guild";
+import { TrackedGuild, TrackedGuildSchema, TrackedMember } from "./schemas/Guild";
 import { GuildTracker } from "./updater/Updater";
 import express from "express";
 import { Util } from "./util/Util";
@@ -23,6 +23,7 @@ APIUpdater.start();
 
 // console log length of collection
 APIUpdater.APIModel.countDocuments({}).then(c => console.log(`Guilds tracked: ${c}`));
+// console.log(`debug. guilds tracked: ???`)
 const app = express();
 app.set('view engine', 'ejs');
 app.get('/', async (req, res) => {
@@ -76,8 +77,45 @@ app.get('/player/:id', async (req, res) => {
     }
 })
 app.get('/tracked/:name', async (req, res) => {
-    const tracked = await APIUpdater.APIModel.findOne({ name_lower: req.params.name.toLowerCase() }).catch(e => null);
-    if (tracked) return res.json(tracked);
+    const type: 'player' | 'name' | 'id' = req.query.type as 'player' | 'id' | 'name' || 'name';
+    const fetch = req.query.fetch || false;
+    const lean = req.query.lean || false;
+    const parseNames = req.query.parseNames || false;
+    const currentMembersOnly = req.query.currentMembersOnly || false;
+    const guildQuery = req.params.name;
+    const query = {
+        name: async () => ({ name_lower: guildQuery.toLowerCase() }),
+        player: async () => ({ allMembers: { $elemMatch: { uuid: (guildQuery.length <= 16 ? (await Wrappers.mojang.player(guildQuery)).id : guildQuery), inGuild: true } } }),
+        id: async () => ({ _id: new mongoose.Types.ObjectId(guildQuery) })
+    }
+    if (fetch) {
+        // it will update the api by itself.
+        const data = await Wrappers.hypixel.guild(req.params.name, type, { updateAPI: true }).catch(e => e);
+    }
+    console.time('tracked')
+    let aggregation: mongoose.PipelineStage[] = [
+        { "$match": (await query[type]()) },
+        { "$limit": 1 }
+    ]
+    if (lean) aggregation.push({ "$project": { expHistory: 0 } })
+    if (currentMembersOnly) aggregation.push({ "$redact": { "$cond": [{ "$eq": [{ $ifNull: ["$inGuild", true] }, true] }, "$$DESCEND", "$$PRUNE"] } })
+    const tracked: TrackedGuild | null = await APIUpdater.APIModel.aggregate(aggregation).exec().then(e => e[0]).catch(e => null)
+    if (tracked) {
+        if (parseNames) {
+            const usernames = (await Promise.all(tracked.allMembers.map(m => Wrappers.ashcon.player(m.uuid))));
+            if (usernames) {
+                tracked.allMembers.forEach((m, i) => {
+                    const username = usernames.find(u => u.uuid?.replaceAll('-', '') == m.uuid)?.username;
+                    if (!username) console.log(`ERR! ${m.uuid} - ${username}`);
+                    (tracked.allMembers as TrackedMember<true>[])[i] = { username, ...m };
+
+                })
+            }
+        }
+
+        console.timeEnd('tracked')
+        return res.json(tracked);
+    }
     return res.json({ error: 'untracked', message: 'That guild is not tracked.' })
 })
 app.listen(8080, () => {

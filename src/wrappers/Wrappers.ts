@@ -17,7 +17,7 @@ export class Wrappers {
     }
     public static mojang = {
         player: mojangPlayer,
-        profile: mojangProfile
+        profile: mojangProfile,
     }
     public static sk1er = {
         guild: sk1erGuild

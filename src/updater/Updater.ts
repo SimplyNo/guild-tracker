@@ -79,20 +79,20 @@ export class GuildTracker extends EventEmitter {
         if (!trackedGuild) {
             // add Guild
             console.log(`Not Tracked!`)
-            this.addGuild(hypixelData);
+            await this.addGuild(hypixelData);
         } else {
             Object.assign(trackedGuild, this.getUpdatedData(trackedGuild, hypixelData));
-            trackedGuild.save();
+            await trackedGuild.save();
         }
     }
-    public addGuild(hypixelData: HypixelGuildResponse<false | true>) {
+    public async addGuild(hypixelData: HypixelGuildResponse<false | true>) {
         if (hypixelData.error) return;
         /**
          * ((value: APIGuildMember & { weekly: number; }, index: number, array: (APIGuildMember & { weekly: number; })[]) => unknown) & ((value: APIGuildMember & { ...; }, index: number, array: (APIGuildMember & { ...; })[]) => unknown)
         */
-        const guild = new this.APIModel(this.getUpdatedData({}, hypixelData));
+        const guild = new this.APIModel({ ...this.getUpdatedData({}, hypixelData), firstUpdated: new Date() });
         guild._id = new mongoose.Types.ObjectId(hypixelData._id);
-        guild.save();
+        await guild.save();
         console.log(chalk.green('Added guild: ') + chalk.red(guild.name) + chalk.grey(` members: ${hypixelData.members.length} | level: ${hypixelData.level.toFixed(2)}`));
     }
     private getUpdatedData(savedData: Partial<TrackedGuild>, newData: HypixelGuildResponse<true | false>) {
@@ -117,6 +117,8 @@ export class GuildTracker extends EventEmitter {
         savedData.preferredGames = preferredGames;
         savedData.publiclyListed = publiclyListed;
 
+        // update old guilds
+        savedData.firstUpdated = savedData.expHistory[0][0];
         for (const member of members) {
             const trackedMember = savedData.allMembers.find(m => m.uuid === member.uuid);
             const { expHistory, joined, questParticipation, rank, uuid, weekly } = member;

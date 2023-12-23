@@ -54,10 +54,6 @@ export default async function get<parseNames extends Boolean>(query: string, typ
 
         if (data.outage) return rej({ error: 'outage', message: 'Hypixel Outage' })
         if (!data.guild) return rej({ error: 'notfound', message: 'Could not find this guild' })
-        // do api updating
-        if (updateAPI) {
-            APIUpdater.updateGuild(data.guild);
-        }
 
 
         let members = data.guild.members;
@@ -109,6 +105,10 @@ export default async function get<parseNames extends Boolean>(query: string, typ
         data.guild.level = level.level;
         data.guild.expToNextLevel = level.nextLevel;
 
+        // do api updating
+        if (updateAPI) {
+            await APIUpdater.updateGuild(data.guild);
+        }
         data.guild ? res({ cached: false, ...data.guild }) : rej({ error: 'error', message: 'Something went wrong!' })
         if (!isCached) redis.setex(`cache-guild:${query}`, cacheLifespan, JSON.stringify(data.guild));
     })
