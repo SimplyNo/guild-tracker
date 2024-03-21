@@ -25,6 +25,7 @@ export default async function get(query) {
             if (!cache) redis.setex(`cache-mojang:${url}`, cacheLifespan, JSON.stringify(body));
             res(body);
         }).catch(e => {
+            console.error(e);
             res(0)
         })
 

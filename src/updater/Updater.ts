@@ -82,7 +82,8 @@ export class GuildTracker extends EventEmitter {
             await this.addGuild(hypixelData);
         } else {
             Object.assign(trackedGuild, this.getUpdatedData(trackedGuild, hypixelData));
-            await trackedGuild.save();
+            await this.APIModel.findOneAndUpdate({ _id: hypixelData._id }, trackedGuild)
+            // await trackedGuild.save();
         }
     }
     public async addGuild(hypixelData: HypixelGuildResponse<false | true>) {
@@ -119,19 +120,20 @@ export class GuildTracker extends EventEmitter {
 
         // update old guilds
         savedData.firstUpdated = savedData.expHistory[0][0];
+        // todo: see who left and set inGuild to false
+        const membersWhoLeft = savedData.allMembers.filter(m => m.inGuild && !members.find(e => e.uuid === m.uuid));
+        for (const memberWhoLeft of membersWhoLeft) {
+            memberWhoLeft.inGuild = false;
+            memberWhoLeft.leftEstimate = {
+                estimateMin: savedData.lastUpdated,
+                estimateMax: new Date()
+            };
+        }
         for (const member of members) {
             const trackedMember = savedData.allMembers.find(m => m.uuid === member.uuid);
             const { expHistory, joined, questParticipation, rank, uuid, weekly } = member;
 
-            // todo: see who left and set inGuild to false
-            const membersWhoLeft = savedData.allMembers.filter(m => m.inGuild && !members.find(e => e.uuid === m.uuid));
-            for (const memberWhoLeft of membersWhoLeft) {
-                memberWhoLeft.inGuild = false;
-                memberWhoLeft.leftEstimate = {
-                    estimateMin: savedData.lastUpdated,
-                    estimateMax: new Date()
-                };
-            }
+
             if (!trackedMember) {
                 savedData.allMembers.push({
                     expHistory: new Map(Object.entries(expHistory)),
@@ -144,6 +146,7 @@ export class GuildTracker extends EventEmitter {
             } else {
                 for (const [date, exp] of Object.entries(member.expHistory)) {
                     trackedMember.expHistory.set(date, exp);
+                    trackedMember.inGuild = true;
                 }
             }
         }

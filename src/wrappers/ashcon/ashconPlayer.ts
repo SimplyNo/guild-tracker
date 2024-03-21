@@ -15,8 +15,9 @@ export default async function get(player) {
         const data = await fetch(`https://api.ashcon.app/mojang/v2/user/${player}`)
         try { body = await data.json() } catch { resolve({ outage: true }) }
         if (!body.uuid) return resolve({ exists: false })
-        body.uuid = body.uuid.replace(/-/g, '')
-        body.exists = true
+        body.uuid = body.uuid.replace(/-/g, '');
+        body.exists = true;
+
         if (body && !cache) redis.setex(`cache-ashcon:${player.toLowerCase()}`, cacheLifespan, JSON.stringify({ uuid: body.uuid, username: body.username }));
         resolve(body)
     })

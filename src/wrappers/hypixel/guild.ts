@@ -7,6 +7,7 @@ import { getLevel } from "../functions/general";
 import mojang from "../mojang/mojangPlayer";
 import sk1er from "../sk1er/sk1erGuild";
 import { HypixelGuildResponse } from "../../schemas/Guild";
+import { Wrappers } from "../Wrappers";
 const endpoints = {
     player: "&player=",
     id: "&id=",
@@ -59,22 +60,17 @@ export default async function get<parseNames extends Boolean>(query: string, typ
         let members = data.guild.members;
         let sk1erData;
         if (parseNames) {
-            sk1erData = await sk1er(data.guild.name);
-            if (sk1erData.exists == false) sk1erData = { members: [] }
+            const usernames = (await Promise.all(members.map(m => Wrappers.mojang.profile(m.uuid))));
+            if (usernames) {
+                members.forEach((m, i) => {
+                    const username = usernames.find(u => (u.id == m.uuid))?.name;
+                    if (!username) console.log(`ERR! ${m.uuid} - ${username}`);
+                    members[i] = { username, ...m };
+
+                })
+            }
         }
         for (const [index, member] of members.entries()) {
-            if (parseNames) {
-                let sk1erName = sk1erData.members.find(m => m.uuid == member.uuid);
-                if (!sk1erName || !sk1erName.name) {
-                    // Get mojang name
-                    let username = await mojang(member.uuid);
-                    if (!username) username = [{ name: "???" }];
-                    data.guild.members[index].username = username.name;
-                } else {
-                    data.guild.members[index].username = sk1erName.name;
-                }
-            }
-
             // set member vars:
             let weekly = Object.entries(member.expHistory).reduce((prev, current) => prev + parseInt(current[1] as string), 0);
             data.guild.members[index].weekly = weekly;
@@ -98,10 +94,11 @@ export default async function get<parseNames extends Boolean>(query: string, typ
         data.guild.expHistory = expHistory.reduce((prev, curr, index) => Object.assign({ [Object.keys(data.guild.members[0].expHistory)[index]]: curr }, prev), {})
 
         // color
-        data.guild.tagColor && (data.guild.tagColor = colorMap[data.guild.tagColor]);
+        data.guild.tagColor = colorMap[data.guild.tagColor || "GRAY"];
 
         // level
         let level = guildLevel(data.guild.exp);
+        data.guild.expNeeded = level.needed;
         data.guild.level = level.level;
         data.guild.expToNextLevel = level.nextLevel;
 
@@ -143,14 +140,15 @@ function guildLevel(exp) {
         if (exp - need < 0)
             return {
                 level: Math.round((level + exp / need) * 100) / 100,
-                nextLevel: Math.round(need - exp)
+                nextLevel: Math.round(need - exp),
+                needed: Math.round(need)
             };
 
         level += 1;
         exp -= need;
     }
 
-    return { level: 1000, nextLevel: 0 };
+    return { level: 1000, nextLevel: 0, needed: 0 };
 };
 
 function numberfy(str: string) {
