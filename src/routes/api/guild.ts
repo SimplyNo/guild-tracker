@@ -9,7 +9,8 @@ guildRouter.get('/api/guild/:id', async (req, res) => {
         type: <'player' | 'name' | 'id'>req.query.type || 'name',
         parseNames: <string>req.query.parseNames || false,
     }
-    const guild = await Wrappers.hypixel.guild(req.params.id, options.type, { updateAPI: true, parseNames: new Boolean(options.parseNames) }).catch((e: ({ error: string, message: string })) => e).then(e => e);
+    console.log('options:', options)
+    const guild = await Wrappers.hypixel.guild(req.params.id, options.type, { updateAPI: true, parseNames: new Boolean(options.parseNames).valueOf() }).catch((e: ({ error: string, message: string })) => e).then(e => e);
     if (!('_id' in guild)) return res.status(400).json({ error: guild.error || 'API Error', message: guild.message || 'No message provided' });
 
 

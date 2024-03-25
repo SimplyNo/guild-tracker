@@ -29,11 +29,11 @@ export default async function get<parseNames extends Boolean>(query: string, typ
 
         // handle caching
 
-        const isCached = cache ? await redis.exists(`cache-guild:${query}`) : false;
+        const isCached = cache ? await redis.exists(`cache-guild-${parseNames}:${query}`) : false;
         if (isCached) {
             // console.log(new Error())
             // get teh api cache that is an object:
-            const cache = JSON.parse((await redis.get(`cache-guild:${query}`)) || "{}");
+            const cache = JSON.parse((await redis.get(`cache-guild-${parseNames}:${query}`)) || "{}");
 
             console.log(`[CACHE] ${query} was cached! Using cache: ${cache.name}`)
             // console.log(`cache:`, cache.get(query).displayname)
@@ -107,7 +107,7 @@ export default async function get<parseNames extends Boolean>(query: string, typ
             await APIUpdater.updateGuild(data.guild);
         }
         data.guild ? res({ cached: false, ...data.guild }) : rej({ error: 'error', message: 'Something went wrong!' })
-        if (!isCached) redis.setex(`cache-guild:${query}`, cacheLifespan, JSON.stringify(data.guild));
+        if (!isCached) redis.setex(`cache-guild-${parseNames}:${query}`, cacheLifespan, JSON.stringify(data.guild));
     })
 }
 
