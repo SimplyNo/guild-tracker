@@ -177,7 +177,7 @@ const colorMap = {
     DARK_PURPLE: { code: '§5', hex: '#AA00AA', color: 'DARK_PURPLE' },
     DARK_RED: { code: '§4', hex: '#AA0000', color: 'DARK_RED' },
     DARK_AQUA: { code: '§3', hex: '#00AAAA', color: 'DARK_AQUA' },
-    DARK_GREEN: { code: '§2', hex: '#00AA00', color: 'DARK_G    REEN' },
+    DARK_GREEN: { code: '§2', hex: '#00AA00', color: 'DARK_GREEN' },
     DARK_BLUE: { code: '§1', hex: '#0000AA', color: 'DARK_BLUE' },
     BLACK: { code: '§0', hex: '#000000', color: 'BLACK' }
 };
