@@ -4,7 +4,7 @@ import fetch, { Response } from "node-fetch";
 import { hypixelKeys as KEYS } from "../../../config.json";
 import { Util } from "../../util/Util";
 const main = () => `http://api.hypixel.net/player?key=${KEYS[Math.floor(Math.random() * (KEYS.length))]}&uuid=`;
-const mojang = `https://api.mojang.com/users/profiles/minecraft/`;
+const playerDB = `https://playerdb.co/api/player/minecraft/`;
 import { getRank, getPlusColor, getEmojiRank, getFormattedRank, getPlusColorMC, getSk1erRank, getEmojiRankFromFormatted, getLevel } from '../functions/general';
 import { redis } from "../../index";
 
@@ -19,10 +19,10 @@ export default async function get(query) {
         // console.log(cache.has(query))
 
         if (query.length <= 16) {
-            let $uuid = await fetch(mojang + query);
+            let $uuid = await fetch(playerDB + query);
             try {
                 let uuid = await $uuid.json();
-                query = uuid.id;
+                query = uuid.data.player.id;
             } catch (e) {
                 console.log(e);
                 return res(null);
