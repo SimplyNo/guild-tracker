@@ -2,7 +2,7 @@ const fetch = require("node-fetch")
 
 import { redis } from "../../index";
 
-const cacheLifespan = 72 * 60 * 60 * 1000;
+const cacheLifespan = 72 * 60 * 60;
 export default async function get(usernames: string[]) {
     return new Promise<any>(async (res, rej) => {
         let cache = await redis.get(`cache-mojang-bulk:${usernames}`);

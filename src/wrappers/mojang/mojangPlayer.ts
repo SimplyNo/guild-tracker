@@ -3,7 +3,7 @@ const usernameToUUID = (username) => `https://api.mojang.com/users/profiles/mine
 const fetch = require("node-fetch")
 import { redis } from "../../index";
 
-const cacheLifespan = 72 * 60 * 60 * 1000;
+const cacheLifespan = 72 * 60 * 60;
 export default async function get(query) {
     return new Promise<any>(async res => {
         let url = query.length > 16 ? uuidToUsername(query) : usernameToUUID(query);

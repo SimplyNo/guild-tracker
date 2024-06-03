@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import { redis } from '../..';
-const cacheLifespan = 72 * 60 * 60 * 1000;
+const cacheLifespan = 72 * 60 * 60;
 
 export default async function get(player) {
     return new Promise<any>(async (resolve, reject) => {
@@ -12,9 +12,10 @@ export default async function get(player) {
             return resolve(JSON.parse(cache || "{}"));
         }
 
-        const data = await fetch(`https://api.ashcon.app/mojang/v2/user/${player}`)
-        try { body = await data.json() } catch { resolve({ outage: true }) }
-        if (!body.uuid) return resolve({ exists: false })
+        const data = await fetch(`https://api.ashcon.app/mojang/v2/user/${player}`).catch(e => console.error(`ashcon error: `, e));
+        try { body = await data.json() } catch { return resolve({ outage: true }) }
+        if (!body) return;
+        if (!body?.uuid) return resolve({ exists: false })
         body.uuid = body.uuid.replace(/-/g, '');
         body.exists = true;
 
