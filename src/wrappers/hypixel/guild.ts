@@ -4,7 +4,7 @@ import { hypixelKeys as KEYS } from "../../../config.json";
 import { Util } from "../../util/Util";
 import { APIUpdater, redis } from "../../index";
 import { getLevel } from "../functions/general";
-import mojang from "../mojang/mojangPlayer";
+import playerDB from "../playerDB/playerDB";
 import sk1er from "../sk1er/sk1erGuild";
 import { HypixelGuildResponse } from "../../schemas/Guild";
 import { Wrappers } from "../Wrappers";
@@ -22,9 +22,9 @@ export default async function get<parseNames extends Boolean>(query: string, typ
         options = Object.assign({ parseNames: false, cache: true, updateAPI: true }, options || {});
         const { parseNames, cache, updateAPI } = options;
         if (type == 'player' && 16 >= query.length) {
-            let mojangp = await mojang(query);
-            if (!mojangp) return rej({ error: 'notfound', message: 'Player could not be found.' })
-            query = mojangp.id;
+            let playerdb = await playerDB(query);
+            if (!playerdb) return rej({ error: 'notfound', message: 'Player could not be found.' })
+            query = playerdb.id;
         }
 
         // handle caching
@@ -60,10 +60,11 @@ export default async function get<parseNames extends Boolean>(query: string, typ
         let members = data.guild.members;
         let sk1erData;
         if (parseNames) {
-            const usernames = (await Promise.all(members.map(m => Wrappers.mojang.profile(m.uuid))));
+            const usernames = (await Promise.all(members.map(m => playerDB(m.uuid))));
             if (usernames) {
                 members.forEach((m, i) => {
-                    const username = usernames.find(u => (u.id == m.uuid))?.name;
+                    // console.log(usernames);
+                    const username = usernames.find(u => (u?.raw_id == m.uuid))?.username;
                     if (!username) console.log(`ERR! ${m.uuid} - ${username}`);
                     members[i] = { username, ...m };
 
