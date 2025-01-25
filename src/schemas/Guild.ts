@@ -78,6 +78,16 @@ export const TrackedGuildSchema = new Schema({
         },
         required: true
     },
+    recentExpHistory: {
+        type: [SchemaTypes.Mixed],
+        validate: {
+            validator: (v) => {
+                return Array.isArray(v) || (parseInt(v[0]) && parseInt(v[1]));
+            },
+            message: v => `${JSON.stringify(v.value)} is not a valid EXP Data point. Valid is [Date, Number]`
+        },
+        required: true
+    },
 
     /**
      * All guild members including those who have left!

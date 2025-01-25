@@ -101,7 +101,28 @@ export class GuildTracker extends EventEmitter {
 
         if (!savedData.allMembers) savedData.allMembers = [];
         if (!savedData.expHistory) savedData.expHistory = [];
+        if (!savedData.recentExpHistory) savedData.recentExpHistory = [];
         savedData.expHistory.push([Date.now(), exp]);
+        savedData.recentExpHistory.push([Date.now(), exp]);
+        /** 
+         *  Attempt to save space by only saving 1 expHistory extry per day.
+         */
+        const lastElements = new Map();
+
+        savedData.expHistory.forEach(([timestamp, value]) => {
+            // Extract the date (year-month-day) from the timestamp
+            const date = new Date(timestamp).toISOString().split('T')[0];
+
+            // Update the Map with the latest element for the day
+            lastElements.set(date, [timestamp, value]);
+        });
+
+        // Convert the Map back to an array of values
+        savedData.expHistory = Array.from(lastElements.values());
+
+        // make recentExpHistory only have elements where the timestamp is within the last 10 days
+        savedData.recentExpHistory = savedData.recentExpHistory.filter(([timestamp]) => (Date.now() - timestamp) < 10 * 24 * 60 * 60 * 1000);
+
         savedData.exp = exp;
         savedData.name = name;
         savedData.name_lower = name_lower;
