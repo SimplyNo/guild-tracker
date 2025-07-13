@@ -63,7 +63,7 @@ export const TrackedGuildSchema = new Schema({
     firstUpdated: { type: Date, required: true, default: () => new Date() },
     lastUpdated: { type: Date, required: true, default: () => new Date(), index: -1 },
     name: { type: String, default: "an-unnamed-guild" },
-    name_lower: { type: String, default: "an-unnamed-guild", lowercase: true, index: -1 },
+    name_lower: { type: String, default: "an-unnamed-guild", lowercase: true, index: 1 },
     coins: { type: Number, required: true, default: 0 },
     coinsEver: { type: Number, required: true, default: 0 },
     created: { type: Number, required: true },
@@ -114,5 +114,8 @@ export const TrackedGuildSchema = new Schema({
     publiclyListed: { type: Boolean },
     guildExpByGameType: { type: Map, of: Number, required: true },
 });
+
+TrackedGuildSchema.index({ name_lower: 1, exp: -1, name: 1 });
+
 export type TrackedMember<parseNames extends boolean = false> = parseNames extends true ? InferSchemaType<typeof TrackedMemberSchema> & { username?: string } : InferSchemaType<typeof TrackedMemberSchema>;
 export type TrackedGuild = InferSchemaType<typeof TrackedGuildSchema>;

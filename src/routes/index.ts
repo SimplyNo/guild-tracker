@@ -8,8 +8,14 @@ import { searchRouter } from "./api/search";
 import { leaderboardRouter } from "./api/leaderboard";
 import { memberRouter } from "./api/member";
 import { App } from "../..";
-
+import chalk from "chalk";
 export const routes = Router();
+
+
+routes.use((req, res, next) => {
+    console.log(`${chalk.green(req.method)} ${req.url}`);
+    next();
+});
 routes.use(defaultRouter);
 routes.use(levelRouter);
 
