@@ -1,7 +1,5 @@
 import { Router } from "express";
-import mongoose from "mongoose";
 import { APIUpdater } from "../..";
-import { TrackedGuild, TrackedMember } from "../../schemas/Guild";
 import { Wrappers } from "../../wrappers/Wrappers";
 
 export const memberRouter = Router();

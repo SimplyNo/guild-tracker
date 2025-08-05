@@ -1,14 +1,13 @@
+import chalk from "chalk";
 import { Router } from "express";
 import { guildRouter } from "./api/guild";
+import { leaderboardRouter } from "./api/leaderboard";
+import { memberRouter } from "./api/member";
 import { playerRouter } from "./api/player";
+import { searchRouter } from "./api/search";
 import { trackedRouter } from "./api/tracked";
 import { defaultRouter } from "./default";
 import { levelRouter } from "./level";
-import { searchRouter } from "./api/search";
-import { leaderboardRouter } from "./api/leaderboard";
-import { memberRouter } from "./api/member";
-import { App } from "../..";
-import chalk from "chalk";
 export const routes = Router();
 
 

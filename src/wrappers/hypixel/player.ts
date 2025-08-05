@@ -1,12 +1,11 @@
 
-import { Collection } from "@discordjs/collection";
 import fetch, { Response } from "node-fetch";
 import { hypixelKeys as KEYS } from "../../../config.json";
+import { redis } from "../../index";
 import { Util } from "../../util/Util";
+import { getEmojiRank, getFormattedRank, getLevel, getPlusColor, getPlusColorMC, getRank } from '../functions/general';
 const main = () => `http://api.hypixel.net/player?key=${KEYS[Math.floor(Math.random() * (KEYS.length))]}&uuid=`;
 const playerDB = `https://playerdb.co/api/player/minecraft/`;
-import { getRank, getPlusColor, getEmojiRank, getFormattedRank, getPlusColorMC, getSk1erRank, getEmojiRankFromFormatted, getLevel } from '../functions/general';
-import { redis } from "../../index";
 
 const cacheLifespan = 90;
 let lastTimeReset = 30;

@@ -1,10 +1,9 @@
-import mongoose, { Document, Model } from "mongoose";
-import { HypixelGuildResponse, TrackedGuild, TrackedGuildSchema } from "../schemas/Guild";
-import { EventEmitter } from "events";
-import { Util } from "../util/Util";
 import chalk from "chalk";
+import { EventEmitter } from "events";
+import mongoose, { Model } from "mongoose";
+import { HypixelGuildResponse, TrackedGuild } from "../schemas/Guild";
+import { Util } from "../util/Util";
 import { Wrappers } from "../wrappers/Wrappers";
-import { ObjectId } from "mongodb";
 export class GuildTracker extends EventEmitter {
     public readonly updateIntervalSeconds = 1;
     public readonly minCacheAge = 10 * 60 * 1000;

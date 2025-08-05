@@ -1,7 +1,6 @@
-import { APIUpdater } from "../..";
-import { TrackedMember } from "../../schemas/Guild";
-import { Wrappers } from "../../wrappers/Wrappers";
 import { Router } from "express";
+import { APIUpdater } from "../..";
+import { Wrappers } from "../../wrappers/Wrappers";
 export const guildRouter = Router();
 
 guildRouter.get('/api/guild/:id', async (req, res) => {

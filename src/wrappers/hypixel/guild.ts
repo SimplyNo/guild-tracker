@@ -1,13 +1,10 @@
 
 import fetch from "node-fetch";
 import { hypixelKeys as KEYS } from "../../../config.json";
-import { Util } from "../../util/Util";
 import { APIUpdater, redis } from "../../index";
-import { getLevel } from "../functions/general";
-import playerDB from "../playerDB/playerDB";
-import sk1er from "../sk1er/sk1erGuild";
 import { HypixelGuildResponse } from "../../schemas/Guild";
-import { Wrappers } from "../Wrappers";
+import { Util } from "../../util/Util";
+import playerDB from "../playerDB/playerDB";
 const endpoints = {
     player: "&player=",
     id: "&id=",
@@ -58,7 +55,6 @@ export default async function get<parseNames extends Boolean>(query: string, typ
 
 
         let members = data.guild.members;
-        let sk1erData;
         if (parseNames) {
             const usernames = (await Promise.all(members.map(m => playerDB(m.uuid))));
             if (usernames) {

@@ -59,8 +59,6 @@ export class Util {
 
     static splitMessage(text: string, { maxLength = 2_000, char = '\n', prepend = '', append = '' }): string[] {
 
-
-        text = text;
         if (text.length <= maxLength) return [text];
         let splitText = [text];
         if (Array.isArray(char)) {
