@@ -5,7 +5,6 @@ import hypixelStatus from './hypixel/status';
 import mojangPlayer from './mojang/mojangPlayer';
 import mojangProfile from './mojang/mojangProfile';
 import mojangBulkPlayers from './mojang/mojangBulkPlayers';
-import sk1erGuild from './sk1er/sk1erGuild';
 import shiiyuSkyblock from './shiiyu/shiiyuSkyblock';
 import senitherSkyblock from './senither/senitherSkyblock';
 import hypixelleaderboard from './hypixel/leaderboard';
@@ -20,9 +19,6 @@ export class Wrappers {
         player: mojangPlayer,
         profile: mojangProfile,
         bulkPlayers: mojangBulkPlayers
-    }
-    public static sk1er = {
-        guild: sk1erGuild
     }
     public static ashcon = {
         player: ashconPlayer
